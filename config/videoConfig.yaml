@@ -1,0 +1,91 @@
+#  for video Config.
+captureDevices:
+  - devName: FLIR_A615
+    devURL:  192.168.0.209
+    ROILists:  [
+            [   Area11:  1,  actSignal: 1,
+                p0x: 113, p0y: 80, p1x: 178, p1y: 82, p2x: 178, p2y: 132, p3x: 134, p3y: 132, p4x: 114, p4y: 120 ],
+            [   Area12:  2,  actSignal: 0,
+                p0x: 204, p0y: 180, p1x: 402, p1y: 172, p2x: 440, p2y: 280, p3x: 560, p3y: 460, p4x: 258, p4y: 466, p5x: 207, p5y: 322 ],
+            [   Area13:  1,  actSignal: 0,
+                p0x: 392, p0y: 26, p1x: 540, p1y: 16, p2x: 592, p2y: 64, p3x: 540, p3y: 160, p4x: 412, p4y: 164, p5x: 380, p5y: 90 ]
+          ]
+#  - devName: IPCam_190
+#    devURL:  rtsp://admin:Admin1357@192.168.0.190:554/profile2/media.smp
+#    ROILists:  [
+#            [   Area21:  1,  actSignal: 0,
+##                p0x: 168, p0y:  86,  p1x: 340, p1y: 196, p2x:  640, p2y: 324, p3x: 580, p3y: 480, p4x: 420, p4y: 584, p5x: 220, p5y: 480 ],
+#                p0x: 668, p0y: 286,  p1x: 780, p1y: 296, p2x: 1040, p2y: 324, p3x: 960, p3y: 480, p4x: 840, p4y: 520, p5x: 620, p5y: 780 ],
+#            [   Area22:  2,  actSignal: 1,
+#                p0x: 196, p0y: 124, p1x: 340, p1y: 196, p2x: 640, p2y: 324, p3x: 580, p3y: 480, p4x: 420, p4y: 584 ],
+#            [   Area23:  3,  actSignal: 0,
+##                p0x:  32,  p0y:  96  ]
+#                p0x: 768, p0y: 680,  p1x: 1020, p1y: 720, p2x: 1240, p2y: 780, p3x: 1080, p3y: 880, p4x: 820, p4y: 784, p5x: 620, p5y: 720 ],
+#          ]
+#  - devName: blackCircle_7
+#    devURL:  /home/tcom/resources/project/dSteel/dsConveyor/video/blackCircle_7.mp4
+#    ROILists:  [
+#            [   Area31:  1,  actSignal: 1,
+#                p0x:  28,  p0y:  56 ],
+#            [   Area32:  2,  actSignal: 0,
+#                p0x: 196, p0y: 124, p1x: 340, p1y: 196, p2x: 640, p2y: 324, p3x: 580, p3y: 480, p4x: 420, p4y: 584 ],
+#            [   Area33:  3,  actSignal: 0,
+#                p0x: 168, p0y: 86,  p1x: 340, p1y: 196, p2x: 640, p2y: 324, p3x: 580, p3y: 480, p4x: 420, p4y: 584, p5x: 220, p5y: 480 ],
+#          ]
+#  - devName: dsConveyor_1
+#    devURL:  /home/tcom/resources/project/dSteel/dsConveyor/video/1.mp4
+#    ROILists:  [
+#            [   Area41: 3,  actSignal: 1,
+#                p0x: 196, p0y: 124, p1x: 340, p1y: 196, p2x: 640, p2y: 324, p3x: 580, p3y: 480, p4x: 420, p4y: 584 ],
+#            [   Area42: 2,  actSignal: 1,
+#                p0x: 168, p0y: 86,  p1x: 340, p1y: 196, p2x: 640, p2y: 324, p3x: 580, p3y: 480, p4x: 420, p4y: 584, p5x: 220, p5y: 480 ],
+#            [   Area43: 3,  actSignal: 1,
+#                p0x: 196, p0y: 124, p1x: 340, p1y: 196, p2x: 640, p2y: 324, p3x: 580, p3y: 480, p4x: 420, p4y: 584 ],
+#          ]
+
+#========================================================================
+videoConfig:
+    videoLists:
+         webCamVideo0:          /dev/video0
+         SampleVideoA:           /home/tcom/resources/video/samplevideo.mp4
+         SampleVideoB:           /home/tcom/resources/video/video_720x480.mp4
+#         TCOMTech_IPCam_190:    rtsp://admin:Admin1357@192.168.0.190:554/profile2/media.smp
+#         TComThermal208:        rtsp://192.168.0.208
+#         dsConveyor_IPCam_60:  rtsp://root:root@192.168.60.60/axis-media/media.amp
+         dsConveyor_1:          /home/tcom/resources/project/dSteel/dsConveyor/video/1.mp4
+#         dsConveyor_2:          /home/tcom/resources/project/dSteel/dsConveyor/video/2.mp4
+#         dsConveyor_3:          /home/tcom/resources/project/dSteel/dsConveyor/video/3.mp4
+#         dsConveyor_4:          /home/tcom/resources/project/dSteel/dsConveyor/video/4.mp4
+#         dsConveyor_5:          /home/tcom/resources/project/dSteel/dsConveyor/video/5.mp4
+#         dsConveyor_6:          /home/tcom/resources/project/dSteel/dsConveyor/video/6.mp4
+#         dsConveyor_7:          /home/tcom/resources/project/dSteel/dsConveyor/video/7.mp4
+#         dsConveyor_8:          /home/tcom/resources/project/dSteel/dsConveyor/video/8.mp4
+#         dsConveyor_9:          /home/tcom/resources/project/dSteel/dsConveyor/video/9.mp4
+#         bIron_dust_1:          /home/tcom/resources/project/dSteel/dsConveyor/video/bIron_dust_1.avi  #??????
+#         blackCircle_7:         /home/tcom/resources/project/dSteel/dsConveyor/video/blackCircle_7.mp4
+#         blackIron_3:           /home/tcom/resources/project/dSteel/dsConveyor/video/blackIron_3.mp4
+#         blackIron_6:           /home/tcom/resources/project/dSteel/dsConveyor/video/blackIron_6.mp4
+#         blackIron_A8:          /home/tcom/resources/project/dSteel/dsConveyor/video/blackIron_A8.avi
+#          conveyorEmpty:         /home/tcom/resources/project/dSteel/dsConveyor/video/conveyorEmpty.mp4
+#         conveyorOK:            /home/tcom/resources/project/dSteel/dsConveyor/video/conveyorOK.mp4
+#         empty2Rock_1:          /home/tcom/resources/project/dSteel/dsConveyor/video/empty2Rock_1.mp4
+#         empty_5:               /home/tcom/resources/project/dSteel/dsConveyor/video/empty_5.mp4
+#         empty_8:               /home/tcom/resources/project/dSteel/dsConveyor/video/empty_8.mp4
+#         empty_9:               /home/tcom/resources/project/dSteel/dsConveyor/video/empty_9.mp4
+#         empty_dust_1:          /home/tcom/resources/project/dSteel/dsConveyor/video/empty_dust_1.avi
+#         empty_mark_1:          /home/tcom/resources/project/dSteel/dsConveyor/video/empty_mark_1.avi
+#         lime_1:                /home/tcom/resources/project/dSteel/dsConveyor/video/lime_1.mp4
+#         lime_2:                /home/tcom/resources/project/dSteel/dsConveyor/video/lime_2.mp4
+#         lime_4:                /home/tcom/resources/project/dSteel/dsConveyor/video/lime_4.mp4
+#         lime_dust_1:           /home/tcom/resources/project/dSteel/dsConveyor/video/lime_dust_1.avi
+#         rockNormal_1:          /home/tcom/resources/project/dSteel/dsConveyor/video/rockNormal_1.mp4
+#         Video_A1:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A1.avi
+#         Video_A2:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A2.avi
+#         Video_A3:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A3.avi
+#         Video_A4:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A4.avi
+#         Video_A5:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A5.avi
+#         Video_A6:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A6.avi
+#         Video_A7:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A7.avi
+#         Video_A8:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A8.avi
+#         Video_A9:              /home/tcom/resources/project/dSteel/dsConveyor/video/Video_A9.avi
+#==============================================================

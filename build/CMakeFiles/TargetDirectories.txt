@@ -1,0 +1,4 @@
+/home/tcom/inhoRLab1/112Proj/thermalProj/flirCapture/build/CMakeFiles/goFLIR.dir
+/home/tcom/inhoRLab1/112Proj/thermalProj/flirCapture/build/CMakeFiles/edit_cache.dir
+/home/tcom/inhoRLab1/112Proj/thermalProj/flirCapture/build/CMakeFiles/rebuild_cache.dir
+/home/tcom/inhoRLab1/112Proj/thermalProj/flirCapture/build/CMakeFiles/goFLIR_autogen.dir
