@@ -32,25 +32,29 @@ class cAppHandler
 //===================================================================
     int         getSpinSystemConfig( ) ;
     int         readCaptureConfig( const YAML::Node &capConfig ) ;
-    void 				checkROILists(sCapDevice& capDevice, int width, int height);
     int         configFLIRHandler( ) ;
-		void 				goEngine( uint16_t* pData, cv::Mat& frame, sCapDevice& capDevices ) ;
 //-----------------------------------------------------------
     void        showImageMat(void* mat_ptr, const char *name) ;
 //================================================================
 	private :
     std::string                 mAppPath ;
 //------------------------------------------------------
-    SystemPtr                         mSpinSystem ;
-    CameraList                        mCameraList ;
-    std::map<std::string, CameraPtr>  mmCameraPtr ;   // key: url , value: capHandler
+    SystemPtr                   mSpinSystem ;
+    CameraList                  mCameraList ;
 //-----------------------------------------------------
-    sPalette                          mPalette ;
-    std::vector<std::string>          vmPaletteLists ;
+//    CameraPtr                   pActiveCameraPtr = nullptr ;
+//    ImagePtr                    pRawImage ;
+//    ImagePtr                    pConvertedImage ;
+    sPalette                    mPalette ;
+    std::vector<std::string>    vmPaletteLists ;
+//--------------------------------------------------------
+    std::vector<CameraPtr>      vpCameraPtr ;
+    std::vector<sCapROILists>   vmCapROILists ;
 //=========================================================
-    std::vector<sCapDevice>             vmCapDevices ;
-    std::map<std::string, sCapDevice>   mmCapDevices ; // key: url , value: sCapROILists
-    std::map<std::string, cFLIRHandler*> mmFLIRHandler ;  // key: url , value: capHandler
+    std::map<std::string, CameraPtr>      mmCameraPtr ;   // key: url , value: capHandler
+    std::map<std::string, cFLIRHandler*>  mmFLIRHandler ;  // key: url , value: capHandler
+//------------------------------------------------------------
+    std::map<std::string, sCapROILists>   mmCapROILists ; // key: url , value: sCapROILists
 //-----------------------------------------------------
     void    captureNotify(void* trigger_data, void* user_data) ;
 		cCallbackHandler::intCallbackID   mCaptureCBId = 0 ;

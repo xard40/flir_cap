@@ -28,16 +28,18 @@ cFLIRHandler::~cFLIRHandler()
 //----------------------------------------------------------------------------
 // createCapThread
 //----------------------------------------------------------------------------
-cv::Mat* cFLIRHandler::initFLIRHandler( CameraPtr cameraPtr, cv::Mat& thumbnail )
+cv::Mat& cFLIRHandler::initFLIRHandler( CameraPtr cameraPtr, cv::Mat& thumbnail )
 {
     printf("cFLIRHandler::initFLIRHandler(%s)\n", mDevAddress.c_str()) ;
     pCameraPtr = cameraPtr ;
-//    INodeMap & nodeMapTLDevice = pCameraPtr->GetTLDeviceNodeMap();
-//    printDeviceInfo(nodeMapTLDevice);
+    INodeMap & nodeMapTLDevice = pCameraPtr->GetTLDeviceNodeMap();
+    printDeviceInfo(nodeMapTLDevice);
 //------------------------------------------------
     pCameraPtr->Init( ) ;
     INodeMap& nodeMap = pCameraPtr->GetNodeMap();
-    configCamera( nodeMap ) ;
+
+//    configImageSettings( nodeMap ) ;
+//    GetThermalProperty( cameraPtr ) ;
 
     pCameraPtr->BeginAcquisition();
     mImageProcessor.SetColorProcessing(SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR) ;
@@ -50,22 +52,21 @@ cv::Mat* cFLIRHandler::initFLIRHandler( CameraPtr cameraPtr, cv::Mat& thumbnail 
     mImageWidth = pImage->GetWidth();
     mImageHeight = pImage->GetHeight();
     mImageStride = pImage->GetStride();
-    mPayloadType = pImage->GetPayloadType() ;
 //--------------------------------------------------------
     mPixelFormatEnums = pImage->GetPixelFormat() ;
-    size_t bpp = pImage->GetBitsPerPixel() ;
+//    ImagePtr convertedImage = pImage ;
     ImagePtr convertedImage = ConvertImage( pImage ) ;
     uchar* pData = static_cast<uchar *>(convertedImage->GetData());
     convertedImage->Save("flirImage.png") ;
     if (mPixelFormatEnums == PixelFormat_Mono8)
-        printf("initFLIRHandler( Mono8 ), Image W.: %d, H.: %d, Stride: %d, payLoadType: %d\n\n",
-                mImageWidth, mImageHeight, mImageStride, mPayloadType) ;
+        printf("cFLIRHandler::initFLIRHandler( Mono8 ), Image W.: %d, H.: %d, Stride: %d\n\n",
+                mImageWidth, mImageHeight, mImageStride) ;
     else if (mPixelFormatEnums == PixelFormat_Mono16)
-        printf("initFLIRHandler( Mono16 ), Image W.: %d, H.: %d, Stride: %d, payLoadType: %d, bpp: %ld\n\n",
-                mImageWidth, mImageHeight, mImageStride, mPayloadType, bpp) ;
+        printf("cFLIRHandler::initFLIRHandler( Mono16 ), Image W.: %d, H.: %d, Stride: %d\n\n",
+                mImageWidth, mImageHeight, mImageStride) ;
     else
-        printf("initFLIRHandler( Pix.Format: %d ), Image W.: %d, H.: %d, Stride: %d, payLoadType: %d\n\n",
-                mPixelFormatEnums, mImageWidth, mImageHeight, mImageStride, mPayloadType) ;
+        printf("cFLIRHandler::initFLIRHandler( Pix.Format: %d ), Image W.: %d, H.: %d, Stride: %d\n\n",
+                mPixelFormatEnums, mImageWidth, mImageHeight, mImageStride) ;
 //-----------------------------------------------------------------
     mFirstFrame = cv::Mat(mImageHeight + mOffsetY, mImageWidth + mOffsetX, CV_8UC1, pData, mImageStride );
     cv::Size thumbnail_size = cv::Size(0, 0);
@@ -73,7 +74,7 @@ cv::Mat* cFLIRHandler::initFLIRHandler( CameraPtr cameraPtr, cv::Mat& thumbnail 
     thumbnail_size.height	= thumbnail_size.width * (mFirstFrame.rows / (float) mFirstFrame.cols) ;
     cv::resize(mFirstFrame, mThumbnail, thumbnail_size, 0, 0, cv::INTER_AREA) ;
     thumbnail = mThumbnail ;
-    return &mFirstFrame ;
+    return mFirstFrame ;
 }
 
 /**********************************************************
@@ -81,12 +82,12 @@ cv::Mat* cFLIRHandler::initFLIRHandler( CameraPtr cameraPtr, cv::Mat& thumbnail 
 ***********************************************************/
 void cFLIRHandler::startCapture( )
 {
-    printf("\ncFLIRHandler::startCapture( %s ), create threads for getting camera image ...\n", mDevAddress.c_str()) ;
+    printf("cFLIRHandler::startCapture( %s )\n", mDevAddress.c_str()) ;
 		mCBCapStarted = true ;
     pCBCapThread = new std::thread(&cFLIRHandler::cbCaptureImage, this, mDevName + "cbRead") ;
     mThreadMap[mDevName + "cbRead"] = pCBCapThread->native_handle( ) ;
     pCBCapThread->detach() ;
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
 //------------------------------------------
     sCBHandlerData requestCmd ;
     requestCmd.mCMDId = cFLIRHandler::CAPHANDLER_RUNNING ;
@@ -107,7 +108,7 @@ void cFLIRHandler::startCapture( )
 //----------------------------------------------------------------------------
 void cFLIRHandler::cbCaptureImage( std::string name )
 {
-		printf("cFLIRHandler::cbCaptureFrame( thread started ), waiting for CMD request , ..... \n") ;
+		printf("cFLIRHandler::cbCaptureFrame( start ), waiting for CMD request\n") ;
 		while ( mCBCapStarted )		{
 			  std::unique_lock<std::mutex> lock(mMutex) ;
 			  while (qmCmdQueue.empty( ))
@@ -256,7 +257,7 @@ ImagePtr cFLIRHandler::acquireImage()
 //    uint64_t image_timestamp = pImage->GetTimeStamp();
     if (pImage->IsIncomplete()) {
         const char* msg = Spinnaker::Image::GetImageStatusDescription( pImage->GetImageStatus()) ;
-//        static int cnt ;
+        static int cnt ;
 //        printf("acquireImage() IsIncomplete(%d, Status: %d(%s))...\n",
 //                cnt++, pImage->GetImageStatus(), msg) ;
     }
@@ -338,54 +339,87 @@ int cFLIRHandler::printDeviceInfo(INodeMap& nodeMap)
 /****************************************************************
 *
 ****************************************************************/
-int cFLIRHandler::configCamera(INodeMap& nodeMap)
+int cFLIRHandler::configImageSettings(INodeMap& nodeMap)
 {
   int result = 0;
 
-    printf("\n*** configCamera() : CONFIGURE %s Camera Setting ***\n\n", mDevAddress.c_str()) ;
+    printf("\n*** ConfigImageSettings(%s) : CONFIGURING IMAGE SETTINGS ***\n\n", mDevAddress.c_str()) ;
     try   {
 //        CStringPtr pStringNode = (CStringPtr) nodeMap.GetNode("DeviceSerialNumber");
 //        cout << "Serial number: " << pStringNode->GetValue() << endl;
-//        CEnumerationPtr ptrPixelFormat = pCameraPtr->PixelFormat.GetNode();
-        CEnumerationPtr ptrPixelFormat = nodeMap.GetNode("PixelFormat");
+        CFloatPtr pNode = (CFloatPtr) nodeMap.GetNode("DeviceTemperature");
+//        int numLoops = 5;
+//    	  for (int i = 0; i < numLoops; i++) {
+//    	      printf("Loop = %d, Temperature = %f\n", i, pNode->GetValue());
+//    	      sleep(2000);
+//    	  }
+        //
+        // Apply mono 8 pixel format
+        //
+        // *** NOTES ***
+        // Enumeration nodes are slightly more complicated to set than other
+        // nodes. This is because setting an enumeration node requires working
+        // with two nodes instead of the usual one.
+        //
+        // As such, there are a number of steps to setting an enumeration node:
+        // retrieve the enumeration node from the nodemap, retrieve the desired
+        // entry node from the enumeration node, retrieve the integer value from
+        // the entry node, and set the new value of the enumeration node with
+        // the integer value from the entry node.
+        //
+        CEnumerationPtr ptrPixelFormat = pCameraPtr->PixelFormat.GetNode();
+//        CEnumerationPtr ptrPixelFormat = nodeMap.GetNode("PixelFormat");
         if (IsAvailable(ptrPixelFormat) && IsWritable(ptrPixelFormat))  {
-            int64_t pixelFormat = ptrPixelFormat->GetIntValue();
-//======================================================================
-            CEnumEntryPtr ptrPixelFormatMono16 = ptrPixelFormat->GetEntryByName("Mono16");
-            if (!IsAvailable(ptrPixelFormatMono16) || !IsReadable(ptrPixelFormatMono16))  {
-                std::cout << "Unable to set pixel format to Mono16 ..." << endl << endl;
-            }
-            ptrPixelFormat->SetIntValue(ptrPixelFormatMono16->GetValue());
-            printf("Pixel format Mono16 (0x%lX) R/W enabled\n", /*ptrPixelFormatMono16->GetSymbolic().c_str(),*/ pixelFormat);
+            CEnumEntryPtr ptrPixelFormatBayerRG8 = ptrPixelFormat->GetEntryByName("BayerRG8");
+            if (!IsAvailable(ptrPixelFormatBayerRG8) || !IsReadable(ptrPixelFormatBayerRG8))   {
+//=========================================================================================
+                CEnumEntryPtr ptrPixelFormatMono16 = ptrPixelFormat->GetEntryByName("Mono16");
+                if (!IsAvailable(ptrPixelFormatMono16) || !IsReadable(ptrPixelFormatMono16))  {
+                    cout << "Unable to set pixel format to Mono16 ..." << endl << endl;
+                    return result ;
+                }
+                else {
+                    int64_t pixelFormat = ptrPixelFormat->GetIntValue();
+//                    ptrPixelFormat->SetIntValue( pixelFormat ) ;
+//                    ptrPixelFormat->SetIntValue(ptrPixelFormatMono16->GetValue());
+                    printf("Pixel format set to: %s (0x%lX)\n",
+                            ptrPixelFormatMono16->GetSymbolic().c_str(), pixelFormat);
+                }
 //---------------------------------------------------------------
-//            CEnumEntryPtr ptrPixelFormatMono8 = ptrPixelFormat->GetEntryByName("Mono8");
-//            if (!IsAvailable(ptrPixelFormatMono8) || !IsReadable(ptrPixelFormatMono8))  {
-//                std::cout << "Unable to set pixel format to Mono8. Aborting..." << endl << endl;
-//            }
-//            ptrPixelFormat->SetIntValue(ptrPixelFormatMono8->GetValue());
-//            printf("Pixel format Mono8 (0x%lX) R/W enabled \n", /*ptrPixelFormatMono8->GetSymbolic().c_str(),*/ pixelFormat);
+//                CEnumEntryPtr ptrPixelFormatMono8 = ptrPixelFormat->GetEntryByName("Mono8");
+//                if (!IsAvailable(ptrPixelFormatMono8) || !IsReadable(ptrPixelFormatMono8))  {
+//                    cout << "Unable to set pixel format to BayerRG8 or Mono8. Aborting..." << endl << endl;
+//                    return result ;
+//                }
+//                ptrPixelFormat->SetIntValue(ptrPixelFormatMono8->GetValue());
+//                cout << "Pixel format set to: " << ptrPixelFormatMono8->GetSymbolic() << " (ptrPixelFormatMono8)..." << endl;
 //=============================================================================================
+            }
+            else  {
+                ptrPixelFormat->SetIntValue(ptrPixelFormatBayerRG8->GetValue());
+                cout << "Pixel format set to: " << ptrPixelFormatBayerRG8->GetSymbolic() << "( ptrPixelFormatBayerRG8)..." << endl;
+            }
         }
         else
             std::cout << "Pixel format not available..." << std::endl;
 //-------------------------------------------------------------
 // SetAcquisitionFrameRate(INodeMap& nodeMap)  in examples folder Planar.cpp
-//        CBooleanPtr ptrAcquisitionFrameRateEnable = nodeMap.GetNode("AcquisitionFrameRateEnable");
-//        if ( IsWritable(ptrAcquisitionFrameRateEnable))   {
-//            ptrAcquisitionFrameRateEnable->SetValue(true);
-//        }
-//        else
-//            std::cout << "Unable to set Acquisition Frame Rate Enable to true (enum retrieval)" << std::endl << std::endl;
-
-//        Spinnaker::GenApi::CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
-//        if (!IsReadable(ptrAcquisitionFrameRate) || !IsWritable(ptrAcquisitionFrameRate))  {
-//            cout << "Unable to set Acquisition Frame Rate" << endl << endl;
+        CBooleanPtr ptrAcquisitionFrameRateEnable = nodeMap.GetNode("AcquisitionFrameRateEnable");
+        if (!IsWritable(ptrAcquisitionFrameRateEnable))   {
+            std::cout << "Unable to set Acquisition Frame Rate Enable to true (enum retrieval). Aborting..." << std::endl << std::endl;
 //            return -1;
-//        }
-//        float frameRate = static_cast<float>(ptrAcquisitionFrameRate->GetValue());
+        }
+        ptrAcquisitionFrameRateEnable->SetValue(true);
+
+        Spinnaker::GenApi::CFloatPtr ptrAcquisitionFrameRate = nodeMap.GetNode("AcquisitionFrameRate");
+        if (!IsReadable(ptrAcquisitionFrameRate) || !IsWritable(ptrAcquisitionFrameRate))  {
+            cout << "Unable to set Acquisition Frame Rate" << endl << endl;
+//            return -1;
+        }
+        float frameRate = static_cast<float>(ptrAcquisitionFrameRate->GetValue());
 //        const double frameRate = 10.0;
-//        ptrAcquisitionFrameRate->SetValue(frameRate);
-//        std::cout << "Set Acquisition Frame Rate to  " << frameRate << std::endl;
+        ptrAcquisitionFrameRate->SetValue(frameRate);
+        std::cout << "Set Acquisition Frame Rate to  " << frameRate << std::endl;
 //-------------------------------------------------------------
         //
         // Apply minimum to offset X
@@ -435,7 +469,7 @@ int cFLIRHandler::configCamera(INodeMap& nodeMap)
         if (IsAvailable(ptrWidth) && IsWritable(ptrWidth))  {
             mImageWidth = ptrWidth->GetMax();
             ptrWidth->SetValue(mImageWidth);
-            cout << "Width    set to: " << mImageWidth << endl;
+            cout << "  Width  set to: " << mImageWidth << endl;
         }
         else
             cout << "Width not available..." << endl;
@@ -450,7 +484,7 @@ int cFLIRHandler::configCamera(INodeMap& nodeMap)
         if (IsAvailable(ptrHeight) && IsWritable(ptrHeight))  {
             mImageHeight = ptrHeight->GetMax();
             ptrHeight->SetValue(mImageHeight);
-            std::cout << "Height   set to: " << mImageHeight << std::endl;
+            std::cout << " Height  set to: " << mImageHeight << std::endl;
         }
         else
             std::cout << "Height not available..." << std::endl << std::endl;
@@ -487,7 +521,7 @@ int cFLIRHandler::configCamera(INodeMap& nodeMap)
         cout << "Error: " << e.what() << endl;
         result = -1;
     }
-    std::cout << "\n*** end of CONFIGURE CUSTOM Camera SETTINGS ***" << std::endl << std::endl ;
+    std::cout << "\n*** end of CONFIGURING CUSTOM IMAGE SETTINGS ***" << std::endl << std::endl ;
     return result;
 }
 
@@ -1026,15 +1060,11 @@ sThermalProperty& cFLIRHandler::GetThermalProperty( CameraPtr pCamera )
 
     Spinnaker::GenApi::CIntegerPtr ptrWidth = pCamera->Width.GetNode();
     int lptrWidth = ptrWidth->GetValue();
-    Spinnaker::GenApi::CIntegerPtr ptrWidthMax = pCamera->WidthMax.GetNode();
-    int lptrWidthMax = ptrWidthMax->GetValue();
-    printf("imageWidth: %d, WidthMax: %d\n", lptrWidth, lptrWidthMax) ;
+    std::cout << "imageWidth  : "  << lptrWidth << std::endl ;
 
     Spinnaker::GenApi::CIntegerPtr ptrHeight = pCamera->Height.GetNode();
     int lptrHeight = ptrHeight->GetValue();
-    Spinnaker::GenApi::CIntegerPtr ptrHeightMax = pCamera->HeightMax.GetNode();
-    int lptrHeightMax = ptrHeightMax->GetValue();
-    printf("imageHeight: %d, HeightMax: %d\n", lptrHeight, lptrHeightMax) ;
+    std::cout << "imageHeight : "  << lptrHeight << std::endl ;
 
     Spinnaker::GenApi::CIntegerPtr ptrSensorWidth = pCamera->SensorWidth.GetNode();
     int lSensorWidth = ptrSensorWidth->GetValue();
@@ -1043,10 +1073,6 @@ sThermalProperty& cFLIRHandler::GetThermalProperty( CameraPtr pCamera )
     Spinnaker::GenApi::CIntegerPtr ptrSensorHeight = pCamera->SensorHeight.GetNode();
     int lSensorHeight = ptrSensorHeight->GetValue();
     std::cout << "SensorHeight: "  << lSensorHeight << std::endl ;
-
-//    Spinnaker::GenApi::CIntegerPtr ptrPixelDynamicRangeMax = pCamera->PixelDynamicRangeMax.GetNode();
-//    int lPixelDynamicRangeMax = ptrPixelDynamicRangeMax->GetValue();
-//    std::cout << "PixelDynamicRangeMax: "  << lPixelDynamicRangeMax << std::endl ;
 
 //    Spinnaker::GenApi::CIntegerPtr ptrStride = pCamera->Stride.GetNode();
 //    int lStride = ptrStride->GetValue();
@@ -1106,43 +1132,12 @@ sThermalProperty& cFLIRHandler::GetThermalProperty( CameraPtr pCamera )
         printf("IRFormat(%ld):RADIOMETRICK --> %ld\n", lValue, tempRadiometric) ;
     }
 
-//-----------------------------------------------------------------------------
-// SetAcquisitionFrameRate(INodeMap& nodeMap)  in examples folder Planar.cpp
-//    CBooleanPtr ptrAcquisitionFrameRateEnable = nodeMap.GetNode("AcquisitionFrameRateEnable");
-//    if (!IsWritable(ptrAcquisitionFrameRateEnable))   {
-//        std::cout << "Unable to set Acquisition Frame Rate Enable to true (enum retrieval). Aborting..." << std::endl << std::endl;
-////            return -1;
-//    }
-//    ptrAcquisitionFrameRateEnable->SetValue(true);
 
-//    Spinnaker::GenApi::CFloatPtr ptrAcquisitionFrameRate = pCamera->GetNodeMap().GetNode("AcquisitionFrameRate");
-//    if (!IsReadable(ptrAcquisitionFrameRate) || !IsWritable(ptrAcquisitionFrameRate))  {
-//        cout << "Unable to set Acquisition Frame Rate" << endl << endl;
-////            return -1;
-//    }
-//    float frameRate = static_cast<float>(ptrAcquisitionFrameRate->GetValue());
-//    std::cout << "Acquisition Frame Rate: " << frameRate << std::endl;
-////        const double frameRate = 10.0;
-////    ptrAcquisitionFrameRate->SetValue(frameRate);
-////    std::cout << "Set Acquisition Frame Rate to  " << frameRate << std::endl;
-//-------------------------------------------------------------
-    Spinnaker::GenApi::CEnumerationPtr ptrIRFrameRate = pCamera->GetNodeMap().GetNode("IRFrameRate");
+    Spinnaker::GenApi::CEnumerationPtr ptrFrameRate = pCamera->GetNodeMap().GetNode("IRFrameRate");
     //    Spinnaker::GenApi::CIntegerPtr ptrFrameRate = pCamera->IRFrameRate.GetNode();
-    int64_t	IRFrameRate = ptrIRFrameRate->GetIntValue();
-    std::cout << "IRFrameRate: "  << IRFrameRate << std::endl ;
-    mmThermalProperty.insert(std::pair<std::string, double>("IRFrameRate", (double) IRFrameRate)) ;
-//------------------------------------------------------------------------
-//    Spinnaker::GenApi::CEnumerationPtr ptrTriggerMode = pCamera->GetNodeMap().GetNode("TriggerMode");
-//    if (!IsReadable(ptrTriggerMode)) {
-//        std::cout << "Unable to disable trigger mode (node retrieval). Aborting..." << std::endl;
-//    }
-
-//    Spinnaker::GenApi::CEnumEntryPtr ptrTriggerModeOff = ptrTriggerMode->GetEntryByName("Off");
-//    if (!IsReadable(ptrTriggerModeOff))  {
-//        cout << "Unable to disable trigger mode (enum entry retrieval). Aborting..." << endl;
-//    }
-//    ptrTriggerMode->SetIntValue(ptrTriggerModeOff->GetValue());
-//    cout << "Trigger mode disabled..." << endl;
+    int64_t	frameRate = ptrFrameRate->GetIntValue();
+    std::cout << "IRFrameRate: "  << frameRate << std::endl ;
+    mmThermalProperty.insert(std::pair<std::string, double>("IRFrameRate", (double) frameRate)) ;
 //-------------------------------------------------------------------
 	  Spinnaker::GenApi::CStringPtr ptrManufInfo = pCamera->DeviceManufacturerInfo.GetNode();
     std::string devInfo = std::string(ptrManufInfo->GetValue().c_str());
@@ -1260,11 +1255,7 @@ sThermalProperty& cFLIRHandler::GetThermalProperty( CameraPtr pCamera )
         m_Emissivity = ptrEmissivity->GetValue();
         smProperty.mEmissivity = m_Emissivity ;
         mmThermalProperty.insert(std::pair<std::string, double>("ObjectEmissivity", smProperty.mEmissivity)) ;
-
-    ptrEmissivity->SetValue( 0.97 );
-
-        printf("ObjectEmissivity: %.3f, and set to 0.97\n", m_Emissivity) ;
-
+        printf("m_Emissivity    : %.3f\n", m_Emissivity) ;
     }
     Spinnaker::GenApi::CFloatPtr ptrExtOptTransm = pCamera->GetNodeMap().GetNode("ExtOpticsTransmission");
     if ( ptrExtOptTransm )  {
@@ -1368,6 +1359,6 @@ sThermalProperty& cFLIRHandler::GetThermalProperty( CameraPtr pCamera )
 
 //    unsigned int ulValue;
 //    pCamera->ReadRegister(0x71C, &ulValue);
-    printf("\n***  End of GetThermalPropertity( %s ) ************\n", mDevAddress.c_str()) ;
+    printf("\n******  end of %s Device Info.: ************\n\n", mDevAddress.c_str()) ;
     return smProperty ;
 }

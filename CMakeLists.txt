@@ -12,7 +12,6 @@ add_definitions (-std=c++17
 )
 # Add a compiler flag
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 #-----------------------------------------------------------------
 set(CMAKE_BUILD_TYPE "RELEASE")
 # ================= Standard =============================
@@ -73,7 +72,7 @@ pkg_check_modules(LIBAV REQUIRED IMPORTED_TARGET
 #==============  Qt  =========================
 #find_package(Qt6 COMPONENTS Core Widgets Gui)
 #if (NOT Qt6_FOUND)
-    find_package(Qt5 5.12 REQUIRED COMPONENTS Core Widgets Gui)
+    find_package(Qt5 5.15 REQUIRED COMPONENTS Core Widgets Gui)
 #--------------------------------------------------------------
 #find_package (Qt5 REQUIRED COMPONENTS Widgets)
 #find_package (Qt5 REQUIRED COMPONENTS Gui)
@@ -346,7 +345,7 @@ set ( EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_executable (${executable_name} ${PROJECT_SRCS})
 
 #======= Linker OpenCV, CUDA, TensorRT, yaml-cpp ==================================================
-target_link_libraries (${executable_name} Qt5::Widgets )
+#target_link_libraries (${executable_name} Qt5::Widgets )
 target_link_libraries (${executable_name} ${OpenCV_LIBRARIES} -lyaml-cpp)
 #target_link_libraries (${executable_name} ${CUDA_LIBRARIES} ${TENSORRT_LIBRARY})
 #---  Link ffmpeg  ----------------------------------------------------------------

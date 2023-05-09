@@ -4,45 +4,30 @@
 //---------------------------------------------
 #include "appHandler.h"
 
-//*******************************************************************
-//
-//********************************************************************
-const std::vector<cv::Scalar> thermalROIColors = {
-  cv::Scalar(  0,   0,   0),
-  cv::Scalar( 42,  78, 250),
-  cv::Scalar(  0, 255, 255),
-  cv::Scalar(180, 224, 192),
-  cv::Scalar(255,   0,   0),
-  cv::Scalar(255,   0, 255),
-//------------------------------------------
-  cv::Scalar(128, 196, 214),
-  cv::Scalar(214, 192,  96),
-  cv::Scalar(128,   0, 192),
-  cv::Scalar(0  ,  96, 196),
-};
+using namespace std ;
 //***********************************************************
-//   refer to the struct sCapDevice in thermalDef.h
+//
 //************************************************************
 namespace YAML {
     template<>
-    struct convert<sCapDevice> {
-        static Node encode(const sCapDevice &capDevice) {
+    struct convert<sCapROILists> {
+        static Node encode(const sCapROILists &capture) {
             Node node;
-            node.push_back(capDevice.name);
-            node.push_back(capDevice.url);
-            printf("devName: %s, URL: %s\n", capDevice.name.c_str(), capDevice.url.c_str()) ;
+            node.push_back(capture.name);
+            node.push_back(capture.url);
+            printf("devName: %s, URL: %s\n", capture.name.c_str(), capture.url.c_str()) ;
             return node;
         }
-        static bool decode(const Node &node, sCapDevice &capDevice) {
-            capDevice.name = node["devName"].as<std::string>();
-            capDevice.url = node["devURL"].as<std::string>();
+        static bool decode(const Node &node, sCapROILists &capture) {
+            capture.name = node["devName"].as<std::string>();
+            capture.url = node["devURL"].as<std::string>();
             YAML::Node roiLists = node["ROILists"];
-            sCaptureROI  frame_roi ;
+            sCapFrameROI  frame_roi ;
             cv::Point cv_pt ;
             int area_id = 0 ;
-            capDevice.roiLists.clear() ;
-            for (YAML::const_iterator roi_it = roiLists.begin(); roi_it != roiLists.end(); ++roi_it) {
-                YAML::Node roiLists_map = roi_it->as<YAML::Node>();
+            capture.regionLists.clear() ;
+            for (YAML::const_iterator area_it = roiLists.begin(); area_it != roiLists.end(); ++area_it) {
+                YAML::Node roiLists_map = area_it->as<YAML::Node>();
                 int list_id = 0 ;
                 frame_roi.roiPts.clear() ;
                 for (YAML::const_iterator pt_it = roiLists_map.begin(); pt_it != roiLists_map.end(); ++pt_it) {
@@ -50,8 +35,8 @@ namespace YAML {
                     std::string key = map_it->first.as<std::string>();
                     int value = map_it->second.as<int>() ;
                     if (list_id == 0)  {
-                        frame_roi.roiName = key ;
-                        frame_roi.roiType = value ;
+                        frame_roi.regionName = key ;
+                        frame_roi.regionType = value ;
                     }
                     else if (list_id == 1) {
                         frame_roi.signalName = key ;
@@ -68,7 +53,7 @@ namespace YAML {
                     }
                     list_id += 1 ;
                 }
-                capDevice.roiLists.push_back( frame_roi ) ;
+                capture.regionLists.push_back( frame_roi ) ;
                 area_id += 1 ;
             }
             return true ;
@@ -121,25 +106,9 @@ int cAppHandler::InitHandler( std::string configFile )
         vmPaletteLists.push_back("False_color_palette5") ;
         vmPaletteLists.push_back("False_color_palette6") ;
 
-        mPalette = GetPalette( vmPaletteLists[11] );
+        mPalette = GetPalette( vmPaletteLists[10] );
     }
     return configNumber ;
-}
-
-/************************************************************************************
-*
-************************************************************************************/
-int cAppHandler::readCaptureConfig( const YAML::Node &capConfig )
-{
-  int totalDevices = 0 ;
-
-    if (capConfig["flirDevices"]) {
-        vmCapDevices = capConfig["flirDevices"].as<std::vector<sCapDevice>>();
-        for (std::vector<sCapDevice>::iterator it = vmCapDevices.begin(); it != vmCapDevices.end(); ++it) {
-            totalDevices += 1 ;
-        }
-    }
-    return totalDevices ;
 }
 
 /************************************************************************************
@@ -157,12 +126,12 @@ int cAppHandler::getSpinSystemConfig( )
 
     mCameraList = mSpinSystem->GetCameras();
     int numCameras = mCameraList.GetSize();
+    printf("Number of FLIR cameras detected: %d\n\n", numCameras) ;
     if (numCameras == 0) {
         ExitHandler() ;
         printf("no FLIR camera detected !\n") ;
         return  0 ;
     }
-    else printf("%d FLIR camera(s) detected !\n", numCameras) ;
     for (int id = 0; id < numCameras; id++)  {
         CameraPtr cameraPtr = mCameraList.GetByIndex(id);
         CValuePtr ptr_ipAddress = cameraPtr->GetTLDeviceNodeMap().GetNode("GevDeviceIPAddress");
@@ -177,80 +146,78 @@ int cAppHandler::getSpinSystemConfig( )
     return numCameras ;
 }
 
+/************************************************************************************
+*
+************************************************************************************/
+int cAppHandler::readCaptureConfig( const YAML::Node &capConfig )
+{
+  int totalDevices = 0 ;
+
+    if (capConfig["captureDevices"]) {
+        vmCapROILists = capConfig["captureDevices"].as<std::vector<sCapROILists>>();
+        for (std::vector<sCapROILists>::iterator it = vmCapROILists.begin(); it != vmCapROILists.end(); ++it) {
+//            std::vector<sCapFrameROI>& region_lists = it->regionLists ;
+//            int r_id = 0 ;
+//            for (sCapFrameROI frame_region : region_lists )   {
+//                std::vector<cv::Point>  roi_pts = frame_region.roiPts ;
+//                printf("%s: %s, Reg.%d:%s(%d): Sig:%s(%d), ",
+//                    it->name.c_str(), it->url.c_str(),
+//                    r_id, frame_region.regionName.c_str(), frame_region.regionType,
+//                          frame_region.signalName.c_str(), frame_region.actionType) ;
+//                int pt_id = 0 ;
+//                for (cv::Point pt : roi_pts)  {
+//                    printf("P%d.X:%3d Y:%3d, ", pt_id, pt.x, pt.y) ;
+//                    pt_id += 1 ;
+//                }
+//                r_id += 1 ;
+//                printf("\n") ;
+//            }
+            totalDevices += 1 ;
+        }
+    }
+    return totalDevices ;
+}
+
 //============================================================================
-//    std::vector<sCapDevice>   vmCapDevices ;
+//    std::vector<CameraPtr>      vpCameraPtr ;
+//    std::vector<sCapROILists>   vmCapROILists ;
+//  --> generate map members of mmCapROILists && mmFLIRHandler with the same URL key
 //============================================================================
 int cAppHandler::configFLIRHandler(  )
 {
-  cv::Mat *firstFrame, thumbnail ;
-    for (sCapDevice capDevice : vmCapDevices)   {
-        std::string devURL = capDevice.url ;
-        std::string devName = capDevice.name ;
+  cv::Mat firstFrame, thumbnail ;
+    for (sCapROILists capROIList : vmCapROILists)   {
+        std::string devURL = capROIList.url ;
+        std::string devName = capROIList.name ;
 //---------------------------------------------------------
-        std::map<std::string, CameraPtr>::iterator camera_it = mmCameraPtr.begin() ;
-        while (camera_it != mmCameraPtr.end())   {
-            if ( camera_it->first == devURL) {
+        std::map<std::string, CameraPtr>::iterator it = mmCameraPtr.begin() ;
+        while (it != mmCameraPtr.end())   {
+            if ( it->first == devURL) {
+                mmCapROILists.insert(std::pair<std::string, sCapROILists>(devURL, capROIList)) ;
                 cFLIRHandler* flirHandler = new cFLIRHandler(devName, devURL) ;
-                CameraPtr cameraPtr = camera_it->second ;
+                mmFLIRHandler.insert(std::pair<std::string, cFLIRHandler*>(devURL,flirHandler)) ;
+
+                mCaptureCBId = flirHandler->regCapNotify(this, &cAppHandler::captureNotify, flirHandler) ;
+
+                CameraPtr cameraPtr = it->second ;
                 firstFrame = flirHandler->initFLIRHandler( cameraPtr, thumbnail ) ;
-                if ( firstFrame )   {
-                    checkROILists(capDevice, firstFrame->cols, firstFrame->rows) ;
-                    mmCapDevices.insert(std::pair<std::string, sCapDevice>(devURL, capDevice)) ;
-                    mmFLIRHandler.insert(std::pair<std::string, cFLIRHandler*>(devURL, flirHandler)) ;
-                    mCaptureCBId = flirHandler->regCapNotify(this, &cAppHandler::captureNotify, flirHandler) ;
+                sThermalProperty property = flirHandler->GetThermalProperty( cameraPtr ) ;
+                printf("R           : %d\n", property.mR) ;
+                printf("B           : %.6f\n", property.mB) ;
+                printf("F           : %.6f\n", property.mF) ;
+                printf("Emissivity  : %.6f\n", property.mEmissivity) ;
+                printf("ObjectDistance: %.6f\n", property.mObjectDistance) ;
+                printf("beta2       : %.6f\n", property.mBeta2) ;
 
-                    capDevice.property = flirHandler->GetThermalProperty( cameraPtr ) ;
-//                    printf("R               : %d\n", property.mR) ;
-//                    printf("B               : %.6f\n", property.mB) ;
-//                    printf("F               : %.6f\n", property.mF) ;
-//                    printf("ObjectEmissivity: %.6f\n", property.mEmissivity) ;
-//                    printf("ObjectDistance  : %.6f\n", property.mObjectDistance) ;
-//                    printf("beta2           : %.6f\n", property.mBeta2) ;
-
-                    flirHandler->startCapture( ) ;
-                }
-                else
-                    delete flirHandler ;
+                flirHandler->startCapture( ) ;
+                break ;
             }
             else
-                printf("cAppHandler::configFLIRHandler( %s != %s)\n", camera_it->first.c_str(), devURL.c_str()) ;
-            camera_it++ ;
+                printf("cAppHandler::configFLIRHandler( %s != %s)\n", it->first.c_str(), devURL.c_str()) ;
+            it++ ;
         }
 		}
     return (int) mmFLIRHandler.size( ) ;
-}
-
-/****************************************************************
-*
-****************************************************************/
-void cAppHandler::checkROILists(sCapDevice& capDevice, int img_width, int img_height)
-{
-//    for (sCaptureROI roi : capDevices.capDevices ) {
-    for (int o_id = 0; o_id < (int) capDevice.roiLists.size(); o_id++ ) {
-        sCaptureROI* roi = &capDevice.roiLists[o_id] ;
-        roi->p1.x = roi->p2.x = roi->roiPts[0].x ;
-        roi->p1.y = roi->p2.y = roi->roiPts[0].y ;
-        for (int p_id = 0; p_id < (int)roi->roiPts.size(); p_id++) {
-            if (roi->roiPts[p_id].x < 0)
-                roi->roiPts[p_id].x = 0 ;
-            if (roi->roiPts[p_id].x > img_width)
-                roi->roiPts[p_id].x = img_width ;
-            if (roi->roiPts[p_id].y > img_height)
-                roi->roiPts[p_id].y = img_height ;
-            if (roi->roiPts[p_id].y < 0)
-                roi->roiPts[p_id].y = 0 ;
-//-------------------------------------------------
-            if (roi->roiPts[p_id].x < roi->p1.x)
-                roi->p1.x = roi->roiPts[p_id].x ;
-            if (roi->roiPts[p_id].y < roi->p1.y)
-                roi->p1.y = roi->roiPts[p_id].y ;
-            if (roi->roiPts[p_id].x > roi->p2.x)
-                roi->p2.x = roi->roiPts[p_id].x ;
-            if (roi->roiPts[p_id].y > roi->p2.y)
-                roi->p2.y = roi->roiPts[p_id].y ;
-        }
-//      printf("P1.X:%3d P1Y:%3d, P2.X:%3d, P2.Y:%3d\n", roi->p1.x, roi->p1.y, roi->p2.x, roi->p2.y) ;
-    }
 }
 
 /****************************************************************
@@ -279,12 +246,11 @@ void cAppHandler::captureNotify(void* trigger_data, void* user_data)
 //==============================================================
 void cAppHandler::GoHandler( )
 {
-  static std::map<std::string, cFLIRHandler*>::iterator handler = mmFLIRHandler.begin() ;
+  static std::map<std::string, cFLIRHandler*>::iterator it = mmFLIRHandler.begin() ;
 
-    if (handler == mmFLIRHandler.end())
-        handler = mmFLIRHandler.begin() ;
-    std::string url = handler->first ;
-    cFLIRHandler* flirHandler = handler->second ;
+    if (it == mmFLIRHandler.end())
+        it = mmFLIRHandler.begin() ;
+    cFLIRHandler* flirHandler = it->second ;
     if ( flirHandler ) {
 //===============================================================
         cv::Mat srcFrame ;
@@ -293,87 +259,30 @@ void cAppHandler::GoHandler( )
         if (pImage)  {
 //================================================================
             uint16_t* pData = static_cast<uint16_t *>(pImage->GetData());
-//===============================================
-            sCapDevice capDevice = mmCapDevices[url] ;
-            goEngine( pData, srcFrame, capDevice) ;
-//------------------------------------------------------------------------
-            showImageMat( (void *) &srcFrame, ("FLIR_Source@" + flirHandler->getDevAddress()).c_str()) ;
-//=================================================================
-//            cv::Mat equalizeFrame ;
-//            cv::equalizeHist(srcFrame, equalizeFrame) ;
-//            showImageMat( (void *) &equalizeFrame, ("FLIR_equalizeFrame@" + flirHandler->getDevAddress()).c_str()) ;
-//===============================================================================
-            bool IS_TO_TEMP = true ;
-//            cv::Mat mono16IRFrame ;
-//            mono16IRFrame.create(srcFrame.rows, srcFrame.cols, CV_16UC1);
-//            converter_16_8::Instance().convertTo16bit(srcFrame, mono16IRFrame, IS_TO_TEMP) ;
-//            showImageMat( (void *) &mono16IRFrame, ("FLIR_Mono16@" + flirHandler->getDevAddress()).c_str()) ;
-//-----------------------------------------------------------------------
-            cv::Mat falseC3Frame ;
-            falseC3Frame.create(srcFrame.rows, srcFrame.cols, CV_8UC3);
-            convertFalseColor16(srcFrame, falseC3Frame, mPalette, IS_TO_TEMP,
-                              converter_16_8::Instance().getMin(),
-                              converter_16_8::Instance().getMax());
-            showImageMat( (void *) &falseC3Frame, ("FLIRFalseC3@" + flirHandler->getDevAddress()).c_str()) ;
-//---------------------------------------------------------
-            cv::Mat equalizeFrame ;
-            cv::cvtColor( falseC3Frame, equalizeFrame, cv::COLOR_BGR2GRAY );
-            cv::equalizeHist(equalizeFrame, equalizeFrame) ;
-            showImageMat( (void *) &equalizeFrame, ("FLIR_equalizeFrame@" + flirHandler->getDevAddress()).c_str()) ;
-//------------------------------------------------------------------------
-
-            cv::Mat srcCFrame ;
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_AUTUMN);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_BONE);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_WINTER);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_JET);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_RAINBOW);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_OCEAN);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_SUMMER);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_SPRING);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_COOL);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_HSV);
-//            cv::applyColorMap(srcFrame, srcCFrame, cv::COLORMAP_PINK);
-            cv::applyColorMap(equalizeFrame, srcCFrame, cv::COLORMAP_HOT);
-            showImageMat( (void *) &srcCFrame, ("Color@" + flirHandler->getDevAddress()).c_str()) ;
-//========================================================================
-        }
-//        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-//==============================================================
-        handler++ ;
-    }
-}
-
-
-/*****************************************************************************
-*
-******************************************************************************/
-void cAppHandler::goEngine( uint16_t* pData, cv::Mat& frame, sCapDevice& capDevices)
-{
-    for (sCaptureROI roi : capDevices.roiLists )   {
-        cv::Scalar color = thermalROIColors[roi.roiType] ;
-        if ( roi.roiPts.size() > 1)  {
-//-------------------------------------------------------------
             uint16_t  max, min ;
-            max = min = pData[roi.p1.y * frame.cols + roi.p1.x] ;
+            sCapFrameROI roi ;
+            roi.p1.x = 96,  roi.p1.y = 128 ;
+            roi.p2.x = 192, roi.p2.y = 200 ;
+            max = min = pData[roi.p1.y * srcFrame.cols + roi.p1.x] ;
             for (int row = roi.p1.y; row < roi.p2.y; row++) {
                 for (int col = roi.p1.x; col < roi.p2.x; col++) {
-                    int id = row * frame.cols + col ;
+                    int id = row * srcFrame.cols + col ;
                     if (pData[id] > max)   max = pData[id] ;
                     if (pData[id] < min)   min = pData[id] ;
   //                  printf("%5d ", pData[id]) ;
                 }
+  //              printf("\n") ;
             }
-//
 //===========================================================================
 //---   IRFormat == RADIOMETRIC ( 0 )
-//---   image_Temp = (B / np.log(R / ((image_Radiance / Emiss / Tau) - K2) + F)) - 273.15
-////            double image_minRadiance = (min - m_J0) / m_J1 ;
+//            double image_minRadiance = (min - m_J0) / m_J1 ;
+
             double image_minRadiance = (min - 4031) / 70.724 ;
             double image_maxRadiance = (max - 4031) / 70.724 ;
             double TAtmC = 293.15 - 273.15 ;
             double H2O = 0.55 * exp(1.5587 + 0.06939 * TAtmC - 0.00027816 * TAtmC * TAtmC + 0.00000068455 * TAtmC * TAtmC * TAtmC) ;
             double Tau = 1.90 * exp(- sqrt(1.0) * (0.006569 + -0.002276 * sqrt(H2O))) + (1 - 1.9) * exp(-sqrt(1.0) * (0.012620 + -0.006670 * sqrt(H2O))) ;
+//            image_Temp = (B / np.log(R / ((image_Radiance / Emiss / Tau) - K2) + F)) - 273.15
 
             double r1 = ((1 - 0.950) / 0.950) * (15912 / (exp(1416.1 / 293.15) - 1.0)) ;
             double r2 = ((1 - Tau) / (0.950 * Tau)) * (15912 / (exp(1416.1 / 293.15) - 1.0)) ;
@@ -391,25 +300,51 @@ void cAppHandler::goEngine( uint16_t* pData, cv::Mat& frame, sCapDevice& capDevi
 //            double image_maxTemp = (max * 0.1) - 273.15 ;
 //            double image_minTemp = (min * 0.1) - 273.15 ;
 //===========================================================================
-              cv::polylines( frame, roi.roiPts, true, color, 1, cv::LINE_4);
-              cv::rectangle(frame, roi.p1, roi.p2, color, 2, cv::LINE_8) ;
-              char minTempStr[16], maxTempStr[16] ;
-              sprintf(minTempStr, "Min.: %.2f", image_minTemp) ;
-              sprintf(maxTempStr, "Max: %.2f", image_maxTemp) ;
-              cv::putText(frame, roi.roiName, cv::Point(roi.p1.x + 4, roi.p1.y + 12),
-                          cv::FONT_HERSHEY_SIMPLEX, 0.4, color) ;
-              cv::putText(frame, maxTempStr, cv::Point(roi.p1.x + 4, roi.p1.y + 28),
-                          cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2) ;
-              cv::putText(frame, minTempStr, cv::Point(roi.p1.x + 4, roi.p1.y + 48),
-                          cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2) ;
-
-//      cv::fillPoly( frame, roi.roiPts, cv::Scalar(0, 255, 255), cv::LINE_8);
-//              printf("ROI %s(%d), MinTemp.: %.3f(%5d), Max.Temp: %.3f(%5d)\n",
-//                      roi.roiName.c_str(), roi.roiType,
-//                      image_minTemp, min, image_maxTemp, max);
-//----------------------------------------------------------------
+//            printf("ROI MinTemp.: %.3f(%5d), Max.Temp: %.3f(%5d)\n", image_minTemp, min, image_maxTemp, max);
+            cv::rectangle(srcFrame, roi.p1, roi.p2, cv::Scalar(255,   0, 255), 1, cv::LINE_8) ;
+//------------------------------------------------------------------------
+            showImageMat( (void *) &srcFrame, ("FLIR_Source@" + flirHandler->getDevAddress()).c_str()) ;
+//            cv::Mat srcNFrame ;
+//            cv::normalize(srcFrame, srcNFrame, 4096, 32768, cv::NORM_MINMAX, CV_16UC1) ;
+//            showImageMat( (void *) &srcNFrame, ("FLIR_SourceNor@" + flirHandler->getDevAddress()).c_str()) ;
+//===============================================================================
+            bool IS_TO_TEMP = true ;
+            cv::Mat mono16IRFrame ;
+            mono16IRFrame.create(srcFrame.rows, srcFrame.cols, CV_16UC1);
+            // converter_16_8::Instance().convert_to8bit(srcFrame, mono16IRFrame, IS_TO_TEMP);
+            converter_16_8::Instance().convertTo16bit(srcFrame, mono16IRFrame, IS_TO_TEMP) ;
+            showImageMat( (void *) &mono16IRFrame, ("FLIR_Mono16@" + flirHandler->getDevAddress()).c_str()) ;
+//-----------------------------------------------------------------------
+            cv::Mat falseC3Frame ;
+            falseC3Frame.create(srcFrame.rows, srcFrame.cols, CV_8UC3);
+            convertFalseColor16(srcFrame, falseC3Frame, mPalette, IS_TO_TEMP,
+                              converter_16_8::Instance().getMin(),
+                              converter_16_8::Instance().getMax());
+//            convertFalseColor(srcFrame, falseC3Frame, mPalette, IS_TO_TEMP,
+//                              converter_16_8::Instance().getMin(),
+//                              converter_16_8::Instance().getMax());
+            printf("ROI MinTemp.: %.2f (%5d),  Max.Temp: %.2f (%5d),  convert Min.: %.2f, Max.: %.2f\n",
+                        image_minTemp, min, image_maxTemp, max,
+                        converter_16_8::Instance().getMin(),
+                        converter_16_8::Instance().getMax());
+            showImageMat( (void *) &falseC3Frame, ("FLIRFalseC3@" + flirHandler->getDevAddress()).c_str()) ;
+//========================================================================
+//        std::this_thread::sleep_for(std::chrono::milliseconds(40));
         }
+//==============================================================
+        it++ ;
     }
+}
+
+//====================================================
+/**
+@brief parallel capture function
+*/
+void parallel_capture_(Spinnaker::CameraPtr & pCam, cv::Mat & img) {
+	// capture
+	Spinnaker::ImagePtr image = pCam->GetNextImage();
+	void* data = image->GetData();
+	std::memcpy(img.data, data, sizeof(unsigned char) * img.rows * img.cols);
 }
 
 //----------------------------------------------------------------------------
@@ -424,7 +359,6 @@ void cAppHandler::ExitHandler()
 //    }
     mCameraList.Clear();
     mSpinSystem->ReleaseInstance();
-		cv::destroyAllWindows();
 }
 
 //----------------------------------------------------------------------------

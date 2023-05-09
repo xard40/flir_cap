@@ -21,8 +21,7 @@ using namespace Spinnaker::GenApi;
 using namespace Spinnaker::GenICam;
 //-------------------------------------------
 #include "callbackHandler.h"
-#include "thermalDef.h"
-//#include "captureDef.h"
+#include "captureDef.h"
 //#include "queueFPS2.h"
 #include "sharedQueue.h"
 
@@ -70,9 +69,9 @@ class cFLIRHandler
 //--------------------------------------------------------------------------
 		sThermalProperty& 	GetThermalProperty( CameraPtr pCamera ) ;
 	  void            Connect( CameraPtr cameraPtr );
-		cv::Mat*  			initFLIRHandler( CameraPtr cameraPtr, cv::Mat& thumbnail ) ;
+		cv::Mat&  			initFLIRHandler( CameraPtr cameraPtr, cv::Mat& thumbnail ) ;
     int         		printDeviceInfo(INodeMap& nodeMap) ;
-    int         		configCamera(INodeMap& nodeMap) ;
+    int         		configImageSettings(INodeMap& nodeMap) ;
 		void 				  	stopHandler( ) ;
 		void 				  	exitHandler( ) ;
 //===============================================================
@@ -124,11 +123,9 @@ class cFLIRHandler
     int 												mImageWidth ;
 		int 												mImageHeight ;
 		int 												mImageStride ;
-    int                         mPayloadType ;
 		std::string 								mPixelFormatS ;
     Spinnaker::PixelFormatEnums mPixelFormatEnums ;
     eIRFormatType               emIRFormatType = RADIOMETRIC ;
-//    eIRFormatType               emIRFormatType = LINEAR_10MK ;
 //    eIRFormatType               emIRFormatType = LINEAR_100MK ;
 //--------------------------------------------------------------
 		sThermalProperty					   smProperty ;

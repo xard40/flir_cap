@@ -859,10 +859,9 @@ double converter_16_8::getMax()
 //adjustment -3 for slightly wrong fit
 double powerToK4(double power)
 {
-//    double slope = 2.58357167114001779457e-07;
-//    double y_0 = 2.26799217314804718626e+03;
-//    return sqrt(sqrt(((double)power - y_0) / slope)) - 3;
-		return (power * 0.01) - 273.15 ;
+    double slope = 2.58357167114001779457e-07;
+    double y_0 = 2.26799217314804718626e+03;
+    return sqrt(sqrt(((double)power - y_0) / slope)) - 3;
 //============================================================
 //    uint16_t rawValue = power ;
 //		float leptonCalSlope = ;
@@ -968,12 +967,10 @@ void converter_16_8::convertTo16bit(const cv::Mat& srcImg, cv::Mat& destImg, boo
             double temp;
             if (doTempConversion) {
                 temp = powerToK4(power);
-//								temp = (power * 0.01) - 273.15 ;
             } else {
                 temp = power;
             }
             temp = round(temp / bucketwidth) * bucketwidth;
-
             hist[temp]++;
         }
     }
@@ -1002,7 +999,6 @@ void converter_16_8::convertTo16bit(const cv::Mat& srcImg, cv::Mat& destImg, boo
         for (int j = 0; j < srcImg.rows; ++j)   {
             double temp;
             if (doTempConversion) {
-//								temp = (srcImg.at<uint16_t>(j, i) * 0.01) - 273.15 ;
                 temp = powerToK4(srcImg.at<uint16_t>(j, i));
             } else {
                 temp = (double)(srcImg.at<uint16_t>(j, i));
