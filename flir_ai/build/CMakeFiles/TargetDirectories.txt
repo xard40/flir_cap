@@ -1,3 +1,0 @@
-/home/tcom/flir_ai/build/CMakeFiles/goFLIR.dir
-/home/tcom/flir_ai/build/CMakeFiles/edit_cache.dir
-/home/tcom/flir_ai/build/CMakeFiles/rebuild_cache.dir
